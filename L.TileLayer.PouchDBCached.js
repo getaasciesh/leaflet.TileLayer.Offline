@@ -167,7 +167,7 @@ L.TileLayer.include({
 		if (minZoom > maxZoom) return;
 		if (!this._map) return;
 
-		var queue = [];
+		var urls = [];
 
 		for (var z = minZoom; z<=maxZoom; z++) {
 
@@ -185,7 +185,7 @@ L.TileLayer.include({
 				for (var i = tileBounds.min.x; i <= tileBounds.max.x; i++) {
 					point = new L.Point(i, j);
 					point.z = z;
-					queue.push(this._getTileUrl(point));
+					urls.push(this._getTileUrl(point));
 				}
 			}
 		}
@@ -194,12 +194,10 @@ L.TileLayer.include({
 			bbox: bbox,
 			minZoom: minZoom,
 			maxZoom: maxZoom,
-			queueLength: queue.length
+			queueLength: urls.length
 		}
 		this.fire('seedstart', seedData);
-		var tile = this._createTile();
-		tile._layer = this;
-		this._seedOneTile(tile, queue, seedData);
+		this._seedTiles(layer, urls, seedData);
 		return this;
 	},
 
@@ -224,6 +222,46 @@ L.TileLayer.include({
 		}, this.options));
 	},
 
+	_seedTiles: function(layer, urls, seedData) {
+		var firstSix = urls.splice(0,8);
+		var self = this;
+		var queue = [];
+		firstSix.forEach(function(url){
+			var tile = self._createTile();
+			tile._layer = layer;
+			self._seedTile(tile, urls, seedData, queue, url);
+		})
+
+	},
+	_seedTile: function(tile, urls, seedData, queue, url) {
+		if (!urls.length) {
+			this.fire('seedend', seedData);
+			return;
+		}
+		this.fire('seedprogress', {
+			bbox:    seedData.bbox,
+			minZoom: seedData.minZoom,
+			maxZoom: seedData.maxZoom,
+			queueLength: seedData.queueLength,
+			remainingLength: urls.length
+		});
+
+		var url = url || urls.pop();
+
+		this._db.get(url, function(err, data) {
+			if (!data) {
+				/// FIXME: Do something on tile error!!
+				tile.onload = function(ev) {
+					this._saveTile(tile, url, null); //(ev)
+					this._seedTile(tile, urls, seedData);
+				}.bind(this);
+				tile.crossOrigin = 'Anonymous';
+				tile.src = url;
+			} else {
+				this._seedTile(tile, urls, seedData);
+			}
+		}.bind(this));
+	},
 	// Uses a defined tile to eat through one item in the queue and
 	//   asynchronously recursively call itself when the tile has
 	//   finished loading.
