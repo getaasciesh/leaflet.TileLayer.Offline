@@ -1,4 +1,4 @@
-
+This fork runs tile queries in parallel. With parallel queries, tiles are fetched upto 8 times faster.
 
 Allows all Leaflet TileLayers to cache into PouchDB for offline use, in a transparent fashion.
 
