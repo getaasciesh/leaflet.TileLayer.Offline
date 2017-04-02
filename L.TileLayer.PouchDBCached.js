@@ -223,10 +223,10 @@ L.TileLayer.include({
 	},
 
 	_seedTiles: function(layer, urls, seedData) {
-		var firstSix = urls.splice(0,8);
+		var queryQueue = urls.splice(0,8);
 		var self = this;
 		var queue = [];
-		firstSix.forEach(function(url){
+		queryQueue.forEach(function(url){
 			var tile = self._createTile();
 			tile._layer = layer;
 			self._seedTile(tile, urls, seedData, queue, url);
